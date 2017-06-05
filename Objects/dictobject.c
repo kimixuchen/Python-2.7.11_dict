@@ -230,7 +230,6 @@ PyDict_Fini(void)
 {
     PyDictObject *op;
 
-
     while (numfree) {
         op = free_list[--numfree];
         assert(PyDict_CheckExact(op));

@@ -1056,12 +1056,7 @@ dict_dealloc(register PyDictObject *mp)
 
 static int
 dict_print(register PyDictObject *mp, register FILE *fp, register int flags)
-{
-    if(dict_total_size > 0) {
-        fprintf(fp, "dict_total_size=%ld  dict_ma_table_size=%ld  percentage=%lf%%.\n", 
-        dict_total_size, dict_ma_table_size, dict_ma_table_size*1.0/dict_total_size*100);
-    }
-    
+{   
 
     register Py_ssize_t i;
     register Py_ssize_t any;
@@ -1111,6 +1106,11 @@ dict_print(register PyDictObject *mp, register FILE *fp, register int flags)
     }
     Py_BEGIN_ALLOW_THREADS
     fprintf(fp, "}");
+    fprintf(fp, "memory usage:\n");
+    if(dict_total_size>0) {
+        fprintf(fp, "dict_total_size=%ldB  dict_ma_table_size=%ldB  percentage=%lf%%.\n",
+        dict_total_size, dict_ma_table_size, dict_ma_table_size*1.0/dict_total_size*100);
+    }
     Py_END_ALLOW_THREADS
     Py_ReprLeave((PyObject*)mp);
     return 0;

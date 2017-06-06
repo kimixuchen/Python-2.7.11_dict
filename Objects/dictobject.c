@@ -919,6 +919,11 @@ PyDict_Clear(PyObject *op)
     }
     /* else it's a small table that's already empty */
 
+    if(table_is_malloced) {
+        dict_total_size -= (mp->ma_mask + 1) * sizeof(PyDictEntry);
+    }
+
+
     /* Now we can finally clear things.  If C had refcounts, we could
      * assert that the refcount on table is 1 now, i.e. that this function
      * has unique access to it, so decref side-effects can't alter it.
@@ -1028,12 +1033,16 @@ dict_dealloc(register PyDictObject *mp)
             Py_XDECREF(ep->me_value);
         }
     }
-    if (mp->ma_table != mp->ma_smalltable)
+    if (mp->ma_table != mp->ma_smalltable) {
         PyMem_DEL(mp->ma_table);
+        dict_total_size -= (mp->ma_mask+1) * sizeof(PyDictEntry);
+    }
     if (numfree < PyDict_MAXFREELIST && Py_TYPE(mp) == &PyDict_Type)
         free_list[numfree++] = mp;
-    else
+    else {
         Py_TYPE(mp)->tp_free((PyObject *)mp);
+        dict_total_size -= sizeof(PyDictObject);
+    }
     Py_TRASHCAN_SAFE_END(mp)
 }
 

@@ -16,6 +16,10 @@
  */
 static long dict_total_size = 0L;
 
+/* Size of all ma_table, only malloc memory, unit is Byte.
+ */
+static long dict_ma_table_size = 0L;
+
 /* Set a key error with the specified argument, wrapping it in a
  * tuple automatically so that tuple keys are not unpacked as the
  * exception arguments. */
@@ -658,11 +662,13 @@ dictresize(PyDictObject *mp, Py_ssize_t minused)
         /*
          * newtable use malloc memory
          */
-        dict_total_size += newsize * sizeof(PyDictEntry)
+        dict_total_size += newsize * sizeof(PyDictEntry);
+        dict_ma_table_size += newsize * sizeof(PyDictEntry);
     }
 
     if(oldtable != mp->ma_smalltable) {
         dict_total_size -= (mp->ma_mask+1) * sizeof(PyDictEntry);
+        dict_ma_table_size -= (mp->ma_mask+1) * sizeof(PyDictEntry);
     }
 
     /* Make the dict empty, using the new table. */
@@ -921,6 +927,7 @@ PyDict_Clear(PyObject *op)
 
     if(table_is_malloced) {
         dict_total_size -= (mp->ma_mask + 1) * sizeof(PyDictEntry);
+        dict_ma_table_size -= (mp->ma_mask + 1) * sizeof(PyDictEntry);
     }
 
 
@@ -1036,6 +1043,7 @@ dict_dealloc(register PyDictObject *mp)
     if (mp->ma_table != mp->ma_smalltable) {
         PyMem_DEL(mp->ma_table);
         dict_total_size -= (mp->ma_mask+1) * sizeof(PyDictEntry);
+        dict_ma_table_size -= (mp->ma_mask+1) * sizeof(PyDictEntry);
     }
     if (numfree < PyDict_MAXFREELIST && Py_TYPE(mp) == &PyDict_Type)
         free_list[numfree++] = mp;

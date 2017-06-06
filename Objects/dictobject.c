@@ -286,7 +286,7 @@ PyDict_New(void)
         EMPTY_TO_MINSIZE(mp);
 
         dict_total_size += sizeof(PyDictObject);
-        
+
 #ifdef SHOW_ALLOC_COUNT
         count_alloc++;
 #endif
@@ -654,6 +654,15 @@ dictresize(PyDictObject *mp, Py_ssize_t minused)
             PyErr_NoMemory();
             return -1;
         }
+
+        /*
+         * newtable use malloc memory
+         */
+        dict_total_size += newsize * sizeof(PyDictEntry)
+    }
+
+    if(oldtable != mp->ma_smalltable) {
+        dict_total_size -= (mp->ma_mask+1) * sizeof(PyDictEntry);
     }
 
     /* Make the dict empty, using the new table. */

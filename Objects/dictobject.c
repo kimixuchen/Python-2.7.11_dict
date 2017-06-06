@@ -1057,6 +1057,9 @@ dict_dealloc(register PyDictObject *mp)
 static int
 dict_print(register PyDictObject *mp, register FILE *fp, register int flags)
 {
+    fprintf(fp, "dict_total_size=%d  dict_ma_table_size=%d  percentage=%d%%.\n", 
+    dict_total_size, dict_ma_table_size, dict_ma_table_size*1.0/dict_total_size*100);
+    
     register Py_ssize_t i;
     register Py_ssize_t any;
     int status;

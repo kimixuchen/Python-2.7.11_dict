@@ -284,6 +284,9 @@ PyDict_New(void)
         if (mp == NULL)
             return NULL;
         EMPTY_TO_MINSIZE(mp);
+
+        dict_total_size += sizeof(PyDictObject);
+        
 #ifdef SHOW_ALLOC_COUNT
         count_alloc++;
 #endif

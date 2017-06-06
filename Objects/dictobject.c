@@ -10,6 +10,12 @@
 #include "Python.h"
 
 
+/* Total size of all dict objects, including PyDictObject and
+ * PyDictEntry, unit is Byte.
+ *
+ */
+static long dict_total_size = 0L;
+
 /* Set a key error with the specified argument, wrapping it in a
  * tuple automatically so that tuple keys are not unpacked as the
  * exception arguments. */
@@ -341,7 +347,7 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash)
             Py_INCREF(startkey);
             cmp = PyObject_RichCompareBool(startkey, key, Py_EQ);
             Py_DECREF(startkey);
-            if (cmp < 0)
+            if (cmp < 0) // error happens
                 return NULL;
             if (ep0 == mp->ma_table && ep->me_key == startkey) {
                 if (cmp > 0)

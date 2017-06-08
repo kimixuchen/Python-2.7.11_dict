@@ -403,12 +403,13 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash)
        least likely outcome, so test for that last. */
     for (perturb = hash; ; perturb >>= PERTURB_SHIFT) {
         i = (i << 2) + i + perturb + 1;
+        i &= mask;
         ma_index_lookup = i;
         id = id0[i];
         if(-1 == id) {
             return freeslot == NULL ? &ep0[ma_fill] : freeslot;
         }
-        ep = &ep0[i & mask];
+        ep = &ep0[id];
         if (ep->me_key == key)
             return ep;
         if (ep->me_hash == hash && ep->me_key != dummy) {
@@ -454,8 +455,10 @@ lookdict_string(PyDictObject *mp, PyObject *key, register long hash)
     register size_t perturb;
     register PyDictEntry *freeslot;
     register size_t mask = (size_t)mp->ma_mask;
+    Py_ssize_t *id0 = mp->ma_index;
     PyDictEntry *ep0 = mp->ma_table;
     register PyDictEntry *ep;
+    register Py_ssize_t id;
 
     /* Make sure this function doesn't have to handle non-string keys,
        including subclasses of str; e.g., one reason to subclass
@@ -469,8 +472,14 @@ lookdict_string(PyDictObject *mp, PyObject *key, register long hash)
         return lookdict(mp, key, hash);
     }
     i = hash & mask;
+    ma_index_lookup = i;
+    id = id0[i];
+    if(-1 == id) {
+        ep = &ep0[ma_fill];
+        return ep;
+    }
     ep = &ep0[i];
-    if (ep->me_key == NULL || ep->me_key == key)
+    if (ep->me_key == key)
         return ep;
     if (ep->me_key == dummy)
         freeslot = ep;
@@ -484,9 +493,13 @@ lookdict_string(PyDictObject *mp, PyObject *key, register long hash)
        least likely outcome, so test for that last. */
     for (perturb = hash; ; perturb >>= PERTURB_SHIFT) {
         i = (i << 2) + i + perturb + 1;
-        ep = &ep0[i & mask];
-        if (ep->me_key == NULL)
-            return freeslot == NULL ? ep : freeslot;
+        i &= mask;
+        ma_index_lookup = i;
+        id = id0[i];
+        if(-1 == id) {
+            return freeslot == NULL ? &ep0[ma_fill] : freeslot;
+        }
+        ep = &ep0[id];
         if (ep->me_key == key
             || (ep->me_hash == hash
             && ep->me_key != dummy

@@ -86,13 +86,13 @@ struct _dictobject {
     PyDictEntry *(*ma_lookup)(PyDictObject *mp, PyObject *key, long hash);
     Py_ssize_t ma_index_smalltable[PyDict_MINSIZE];
 
-    /* ma_table points to additional malloc'ed mamory. 
-     * initial, ma_table is malloced a PyDict_MINSIZE memory, and 
-     * ma_table_size is seted to PyDict_MINSIZE.
+    /* ma_table points to ma_table_smalltable for small tables, else to
+     * additional malloc'ed memory.
      * ma_table is never NULL!
      */
     PyDictEntry *ma_table;
     Py_ssize_t ma_table_size;
+    PyDictEntry ma_table_smalltable[PyDict_MINSIZE];
 
 };
 

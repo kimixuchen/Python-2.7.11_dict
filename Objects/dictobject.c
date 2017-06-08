@@ -219,14 +219,15 @@ show_track(void)
 
 #define INIT_NONZERO_DICT_SLOTS(mp) do {                                \
     (mp)->ma_table = (mp)->ma_index_smalltable;                         \
+    (mp)->ma_table_smalltable = (mp)->ma_table_smalltable;              \
     (mp)->ma_mask = PyDict_MINSIZE - 1;                                 \
     (mp)->ma_table_size = PyDict_MINSIZE                                \
     } while(0)
 
 #define EMPTY_TO_MINSIZE(mp) do {                                              \
     memset((mp)->ma_index_smalltable, 0, sizeof((mp)->ma_index_smalltable));   \
+    memset((mp)->ma_table_smalltable, -1, sizeof((mp)->ma_table_smalltable));  \
     (mp)->ma_used = (mp)->ma_fill = 0;                                         \
-    (mp)->ma_table = PyMem_NEW(PyDictEntry, PyDict_MINSIZE);                   \
     INIT_NONZERO_DICT_SLOTS(mp);                                               \
     } while(0)
 

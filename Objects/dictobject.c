@@ -350,7 +350,8 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash, Py_ssize_t *pos)
     PyObject *startkey;
 
     i = (size_t)hash & mask;
-    *pos = i;
+    if(NULL != pos)
+        *pos = i;
     id = id0[i];
 
     /* hash doesn't exist, return next available entry in ma_table
@@ -400,7 +401,8 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash, Py_ssize_t *pos)
     for (perturb = hash; ; perturb >>= PERTURB_SHIFT) {
         i = (i << 2) + i + perturb + 1;
         i &= mask;
-        *pos = i;
+        if(NULL != pos)
+            *pos = i;
         id = id0[i];
         if(-1 == id) {
             return freeslot == NULL ? &ep0[ma_fill] : freeslot;
@@ -468,7 +470,8 @@ lookdict_string(PyDictObject *mp, PyObject *key, register long hash, Py_ssize_t 
         return lookdict(mp, key, hash);
     }
     i = hash & mask;
-    *pos = i;
+    if(NULL != pos)
+        *pos = i;
     id = id0[i];
     if(-1 == id) {
         ep = &ep0[ma_fill];
@@ -490,7 +493,8 @@ lookdict_string(PyDictObject *mp, PyObject *key, register long hash, Py_ssize_t 
     for (perturb = hash; ; perturb >>= PERTURB_SHIFT) {
         i = (i << 2) + i + perturb + 1;
         i &= mask;
-        *pos = i;
+        if(NULL != pos)
+            *pos = i;
         id = id0[i];
         if(-1 == id) {
             return freeslot == NULL ? &ep0[ma_fill] : freeslot;

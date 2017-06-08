@@ -86,6 +86,7 @@ struct _dictobject {
     /* pos: record the position in ma_index(hashtable), this variable may be unnecessary
      * in some caller. but when caller wants to add entry or set entry, we will fill 
      * entry's index in ma_table at this position.
+     * if caller doesn't need pos, just set it with NULL
      */
     PyDictEntry *(*ma_lookup)(PyDictObject *mp, PyObject *key, long hash, Py_ssize_t *pos);
     Py_ssize_t ma_index_smalltable[PyDict_MINSIZE];

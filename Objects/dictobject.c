@@ -638,19 +638,33 @@ insertdict_clean(register PyDictObject *mp, PyObject *key, long hash,
                  PyObject *value)
 {
     register size_t i;
+    register Py_ssize_t id;
     register size_t perturb;
     register size_t mask = (size_t)mp->ma_mask;
     PyDictEntry *ep0 = mp->ma_table;
+    Py_ssize_t *id0 = mp->ma_index;
     register PyDictEntry *ep;
 
     MAINTAIN_TRACKING(mp, key, value);
     i = hash & mask;
-    ep = &ep0[i];
+    id = id0[i]
+    if(-1 == id) {
+        ep = &ep0[ma_fill];
+    } else {
+        ep = &ep0[i];
+    }
     for (perturb = hash; ep->me_key != NULL; perturb >>= PERTURB_SHIFT) {
         i = (i << 2) + i + perturb + 1;
-        ep = &ep0[i & mask];
+        i &= mask;
+        id = id0[i];
+        if(-1 == id) {
+            ep = &ep0[ma_fill];
+        } else {
+            ep = &ep0[i];
+        }
     }
     assert(ep->me_value == NULL);
+    id0[i] = mp->ma_fill;
     mp->ma_fill++;
     ep->me_key = key;
     ep->me_hash = (Py_ssize_t)hash;

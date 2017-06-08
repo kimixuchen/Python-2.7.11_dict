@@ -225,8 +225,8 @@ show_track(void)
     } while(0)
 
 #define EMPTY_TO_MINSIZE(mp) do {                                              \
-    memset((mp)->ma_index_smalltable, 0, sizeof((mp)->ma_index_smalltable));   \
-    memset((mp)->ma_table_smalltable, -1, sizeof((mp)->ma_table_smalltable));  \
+    memset((mp)->ma_index_smalltable, -1, sizeof((mp)->ma_index_smalltable));   \
+    memset((mp)->ma_table_smalltable, 0, sizeof((mp)->ma_table_smalltable));  \
     (mp)->ma_used = (mp)->ma_fill = 0;                                         \
     INIT_NONZERO_DICT_SLOTS(mp);                                               \
     } while(0)
@@ -281,7 +281,9 @@ PyDict_New(void)
             INIT_NONZERO_DICT_SLOTS(mp);
         }
         assert (mp->ma_used == 0);
-        assert (mp->ma_table == mp->ma_smalltable);
+        assert (mp->ma_index == mp->ma_index_smalltable);
+        assert (mp->ma_table == mp->ma_table_smalltable);
+        assert (mp->ma_table_size == PyDict_MINSIZE);
         assert (mp->ma_mask == PyDict_MINSIZE - 1);
 #ifdef SHOW_ALLOC_COUNT
         count_reuse++;

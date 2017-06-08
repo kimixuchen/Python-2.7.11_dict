@@ -78,14 +78,21 @@ struct _dictobject {
      */
     Py_ssize_t ma_mask;
 
+    /* ma_index use as hashtable
+     *
+     */
+    Py_ssize_t *ma_index;
+    PyDictEntry *(*ma_lookup)(PyDictObject *mp, PyObject *key, long hash);
+    
     /* ma_table points to ma_smalltable for small tables, else to
      * additional malloc'ed memory.  ma_table is never NULL!  This rule
      * saves repeated runtime null-tests in the workhorse getitem and
      * setitem calls.
      */
     PyDictEntry *ma_table;
-    PyDictEntry *(*ma_lookup)(PyDictObject *mp, PyObject *key, long hash);
+    Py_ssize_t ma_table_size;
     PyDictEntry ma_smalltable[PyDict_MINSIZE];
+
 };
 
 PyAPI_DATA(PyTypeObject) PyDict_Type;

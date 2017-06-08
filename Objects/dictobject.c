@@ -560,20 +560,32 @@ Used by insertdict.
 */
 static int
 insertdict_by_entry(register PyDictObject *mp, PyObject *key, long hash,
-                    PyDictEntry *ep, PyObject *value)
+                    PyDictEntry *ep, PyObject *value, Py_ssize_t ma_index_pos)
 {
     PyObject *old_value;
 
     MAINTAIN_TRACKING(mp, key, value);
+
     if (ep->me_value != NULL) {
+        /*
+        * entry is active
+        */
         old_value = ep->me_value;
         ep->me_value = value;
         Py_DECREF(old_value); /* which **CAN** re-enter */
         Py_DECREF(key);
     }
     else {
-        if (ep->me_key == NULL)
+        /*
+         * entry is dummy or unused
+         */
+        if (ep->me_key == NULL) {
+            /* the entry is added to ma_table, so the index in ma_index is
+             * ma_fill.
+             */
+            (mp->ma_index)[ma_index_pos] = mp->ma_fill;
             mp->ma_fill++;
+        }
         else {
             assert(ep->me_key == dummy);
             Py_DECREF(dummy);
@@ -599,13 +611,14 @@ insertdict(register PyDictObject *mp, PyObject *key, long hash, PyObject *value)
     register PyDictEntry *ep;
 
     assert(mp->ma_lookup != NULL);
-    ep = mp->ma_lookup(mp, key, hash);
+    Py_ssize_t ma_index_pos = 0;
+    ep = mp->ma_lookup(mp, key, hash, &ma_index_pos);
     if (ep == NULL) {
         Py_DECREF(key);
         Py_DECREF(value);
         return -1;
     }
-    return insertdict_by_entry(mp, key, hash, ep, value);
+    return insertdict_by_entry(mp, key, hash, ep, value, ma_index_pos);
 }
 
 /*

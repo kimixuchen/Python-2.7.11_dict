@@ -83,7 +83,11 @@ struct _dictobject {
      * additional malloc'ed memory. ma_index_table is never NULL!
      */
     Py_ssize_t *ma_index;
-    PyDictEntry *(*ma_lookup)(PyDictObject *mp, PyObject *key, long hash, Py_ssize_t *id);
+    /* pos: record the position in ma_index(hashtable), this variable may be unnecessary
+     * in some caller. but when caller wants to add entry or set entry, we will fill 
+     * entry's index in ma_table at this position.
+     */
+    PyDictEntry *(*ma_lookup)(PyDictObject *mp, PyObject *key, long hash, Py_ssize_t *pos);
     Py_ssize_t ma_index_smalltable[PyDict_MINSIZE];
 
     /* ma_table points to ma_table_smalltable for small tables, else to

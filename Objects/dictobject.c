@@ -534,7 +534,7 @@ _PyDict_MaybeUntrack(PyObject *op)
 {
     PyDictObject *mp;
     PyObject *value;
-    Py_ssize_t mask, i;
+    Py_ssize_t entry_num, i;
     PyDictEntry *ep;
 
     if (!PyDict_CheckExact(op) || !_PyObject_GC_IS_TRACKED(op))
@@ -542,8 +542,8 @@ _PyDict_MaybeUntrack(PyObject *op)
 
     mp = (PyDictObject *) op;
     ep = mp->ma_table;
-    mask = mp->ma_mask;
-    for (i = 0; i <= mask; i++) {
+    entry_num = mp->ma_fill;
+    for (i = 0; i < entry_num; i++) {
         if ((value = ep[i].me_value) == NULL)
             continue;
         if (_PyObject_GC_MAY_BE_TRACKED(value) ||

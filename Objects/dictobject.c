@@ -20,10 +20,6 @@ static long dict_total_size = 0L;
  */
 static long dict_ma_table_size = 0L;
 
-/* Updated in each execution of ma_lookup, record the return
- * entry's index in ma_index.
- */
-static Py_ssize_t ma_index_lookup = -1;
 
 /* Set a key error with the specified argument, wrapping it in a
  * tuple automatically so that tuple keys are not unpacked as the
@@ -340,7 +336,7 @@ the caller can (if it wishes) add the <key, value> pair to the returned
 PyDictEntry*.
 */
 static PyDictEntry *
-lookdict(PyDictObject *mp, PyObject *key, register long hash)
+lookdict(PyDictObject *mp, PyObject *key, register long hash, Py_ssize_t *pos)
 {
     register size_t i;
     register size_t perturb;
@@ -354,7 +350,7 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash)
     PyObject *startkey;
 
     i = (size_t)hash & mask;
-    ma_index_lookup = i;
+    *pos = i;
     id = id0[i];
 
     /* hash doesn't exist, return next available entry in ma_table
@@ -365,7 +361,7 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash)
         return ep;
     }
 
-    ep = &ep0[i];
+    ep = &ep0[id];
 
     /*
      * find the exact entry
@@ -393,7 +389,7 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash)
                  * XXX A clever adversary could prevent this
                  * XXX from terminating.
                  */
-                return lookdict(mp, key, hash);
+                return lookdict(mp, key, hash, pos);
             }
         }
         freeslot = NULL;
@@ -404,7 +400,7 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash)
     for (perturb = hash; ; perturb >>= PERTURB_SHIFT) {
         i = (i << 2) + i + perturb + 1;
         i &= mask;
-        ma_index_lookup = i;
+        *pos = i;
         id = id0[i];
         if(-1 == id) {
             return freeslot == NULL ? &ep0[ma_fill] : freeslot;
@@ -429,7 +425,7 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash)
                  * XXX A clever adversary could prevent this
                  * XXX from terminating.
                  */
-                return lookdict(mp, key, hash);
+                return lookdict(mp, key, hash, pos);
             }
         }
         else if (ep->me_key == dummy && freeslot == NULL)
@@ -449,7 +445,7 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash)
  * This is valuable because dicts with only string keys are very common.
  */
 static PyDictEntry *
-lookdict_string(PyDictObject *mp, PyObject *key, register long hash)
+lookdict_string(PyDictObject *mp, PyObject *key, register long hash, Py_ssize_t *pos)
 {
     register size_t i;
     register size_t perturb;
@@ -472,13 +468,13 @@ lookdict_string(PyDictObject *mp, PyObject *key, register long hash)
         return lookdict(mp, key, hash);
     }
     i = hash & mask;
-    ma_index_lookup = i;
+    *pos = i;
     id = id0[i];
     if(-1 == id) {
         ep = &ep0[ma_fill];
         return ep;
     }
-    ep = &ep0[i];
+    ep = &ep0[id];
     if (ep->me_key == key)
         return ep;
     if (ep->me_key == dummy)
@@ -494,7 +490,7 @@ lookdict_string(PyDictObject *mp, PyObject *key, register long hash)
     for (perturb = hash; ; perturb >>= PERTURB_SHIFT) {
         i = (i << 2) + i + perturb + 1;
         i &= mask;
-        ma_index_lookup = i;
+        *pos = i;
         id = id0[i];
         if(-1 == id) {
             return freeslot == NULL ? &ep0[ma_fill] : freeslot;

@@ -20,6 +20,11 @@ static long dict_total_size = 0L;
  */
 static long dict_ma_table_size = 0L;
 
+/* Updated in each execution of ma_lookup, record the return
+ * entry's index in ma_index.
+ */
+static Py_ssize_t ma_index_lookup = -1;
+
 /* Set a key error with the specified argument, wrapping it in a
  * tuple automatically so that tuple keys are not unpacked as the
  * exception arguments. */
@@ -341,14 +346,31 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash)
     register size_t perturb;
     register PyDictEntry *freeslot;
     register size_t mask = (size_t)mp->ma_mask;
+    Py_ssize_t *id0 = mp->ma_index;
     PyDictEntry *ep0 = mp->ma_table;
     register PyDictEntry *ep;
+    register Py_ssize_t id;
     register int cmp;
     PyObject *startkey;
 
     i = (size_t)hash & mask;
+    ma_index_lookup = i;
+    id = id0[i];
+
+    /* hash doesn't exist, return next available entry in ma_table
+     *
+     */
+    if(-1 == id) {
+        ep = &ep0[ma_fill];
+        return ep;
+    }
+
     ep = &ep0[i];
-    if (ep->me_key == NULL || ep->me_key == key)
+
+    /*
+     * find the exact entry
+     */
+    if (ep->me_key == key)
         return ep;
 
     if (ep->me_key == dummy)
@@ -381,9 +403,12 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash)
        least likely outcome, so test for that last. */
     for (perturb = hash; ; perturb >>= PERTURB_SHIFT) {
         i = (i << 2) + i + perturb + 1;
+        ma_index_lookup = i;
+        id = id0[i];
+        if(-1 == id) {
+            return freeslot == NULL ? &ep0[ma_fill] : freeslot;
+        }
         ep = &ep0[i & mask];
-        if (ep->me_key == NULL)
-            return freeslot == NULL ? ep : freeslot;
         if (ep->me_key == key)
             return ep;
         if (ep->me_hash == hash && ep->me_key != dummy) {

@@ -722,16 +722,6 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
             return -1;
         }
 
-        /*
-         * newtable use malloc memory
-         */
-        dict_total_size += newsize * sizeof(PyDictEntry);
-        dict_ma_table_size += newsize * sizeof(PyDictEntry);
-    }
-
-    if(oldtable != mp->ma_smalltable) {
-        dict_total_size -= (mp->ma_mask+1) * sizeof(PyDictEntry);
-        dict_ma_table_size -= (mp->ma_mask+1) * sizeof(PyDictEntry);
     }
 
     /* Make the ma_index empty, using the new table. */
@@ -747,32 +737,24 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
 
     if (is_oldtable_malloced)
         PyMem_DEL(oldtable);
-    
-    if(entry_fill != entry_used) {
-        /* Arrange ma_table in place, delete dummy entries. */
-        ep0 = mp->ma_table;
-        pos = 0;
-
-        for(i = 0; i < entry_fill; i++) {
-            if(ep0[i]->me_key != dummy) {
-                ep0[pos++] = ep0[i];
-            }
-            else {
-                assert(NULL == ep0[i]->me_value);
-                Py_DECREF(ep0[i]->me_key);
-            }
-        }
-    }
-    
 
     /* Copy the data over; this is refcount-neutral for active entries;
-     * now ma_table only contains active entries.
+     * move entry in ma_table in place, regardless dummy entry, after
+     * this, ma_table should only contain active entries.
      */
-    for (ep = mp->ma_table, i = 0; i < ma_used; i++, ep++) {
-        assert(NULL != ep->me_value && ep->me_key != dummy);
-
-        insertdict_clean(mp, ep->me_key, (long)ep->me_hash, ep->me_value);
+    for (ep = mp->ma_table, i = 0; i < entry_fill; i++, ep++) {
+        if (ep->me_value != dummy) {
+            assert(NULL != ep->me_value);
+            /* Arrange ma_table in place, delete dummy entries. */
+            insertdict_clean(mp, ep->me_key, (long)ep->me_hash, ep->me_value);
+        }
+        else {
+            assert(NULL == ep->me_value);
+            Py_DECREF(ep->me_key);
+        }
     }
+    /* Set rest memory of ma_table to NULL. */
+    memset(ma_table + entry_used, 0, (mp->ma_table_size - entry_used) * sizeof(PyDictEntry));
 
     return 0;
 }

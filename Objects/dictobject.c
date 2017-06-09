@@ -1166,6 +1166,7 @@ _PyDict_Next(PyObject *op, Py_ssize_t *ppos, PyObject **pkey, PyObject **pvalue,
 {
     register Py_ssize_t i;
     register Py_ssize_t mask;
+    register Py_ssize_t *id0;
     register PyDictEntry *ep;
 
     if (!PyDict_Check(op))
@@ -1173,18 +1174,19 @@ _PyDict_Next(PyObject *op, Py_ssize_t *ppos, PyObject **pkey, PyObject **pvalue,
     i = *ppos;
     if (i < 0)
         return 0;
+    id0 = ((PyDictObject *)op)->ma_index;
     ep = ((PyDictObject *)op)->ma_table;
     mask = ((PyDictObject *)op)->ma_mask;
-    while (i <= mask && ep[i].me_value == NULL)
+    while (i <= mask && (-1 == id0[i] || ep[id0[i]].me_value == NULL))
         i++;
     *ppos = i+1;
     if (i > mask)
         return 0;
-    *phash = (long)(ep[i].me_hash);
+    *phash = (long)(ep[id0[i]].me_hash);
     if (pkey)
-        *pkey = ep[i].me_key;
+        *pkey = ep[id0[i]].me_key;
     if (pvalue)
-        *pvalue = ep[i].me_value;
+        *pvalue = ep[id0[i]].me_value;
     return 1;
 }
 

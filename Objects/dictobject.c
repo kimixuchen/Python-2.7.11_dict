@@ -1196,6 +1196,8 @@ static void
 dict_dealloc(register PyDictObject *mp)
 {
     register PyDictEntry *ep;
+    register Py_ssize_t *id;
+
     Py_ssize_t fill = mp->ma_fill;
     PyObject_GC_UnTrack(mp);
     Py_TRASHCAN_SAFE_BEGIN(mp)
@@ -1206,16 +1208,16 @@ dict_dealloc(register PyDictObject *mp)
             Py_XDECREF(ep->me_value);
         }
     }
-    if (mp->ma_table != mp->ma_smalltable) {
+    if (mp->ma_table != mp->ma_table_smalltable) {
         PyMem_DEL(mp->ma_table);
-        dict_total_size -= (mp->ma_mask+1) * sizeof(PyDictEntry);
-        dict_ma_table_size -= (mp->ma_mask+1) * sizeof(PyDictEntry);
+    }
+    if(mp->ma_index != mp->ma_index_smalltable) {
+        PyMem_DEL(mp->ma_index);
     }
     if (numfree < PyDict_MAXFREELIST && Py_TYPE(mp) == &PyDict_Type)
         free_list[numfree++] = mp;
     else {
         Py_TYPE(mp)->tp_free((PyObject *)mp);
-        dict_total_size -= sizeof(PyDictObject);
     }
     Py_TRASHCAN_SAFE_END(mp)
 }

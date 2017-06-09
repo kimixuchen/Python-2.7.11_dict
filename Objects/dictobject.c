@@ -1497,7 +1497,8 @@ dict_items(register PyDictObject *mp)
     register Py_ssize_t i, j, n;
     Py_ssize_t mask;
     PyObject *item, *key, *value;
-    PyDictEntry *ep;
+    Py_ssize_t *id0;
+    PyDictEntry *ep0;
 
     /* Preallocate the list of tuples, to avoid allocations during
      * the loop over the items, which could trigger GC, which
@@ -1524,17 +1525,20 @@ dict_items(register PyDictObject *mp)
         goto again;
     }
     /* Nothing we do below makes any function calls. */
-    ep = mp->ma_table;
+    id0 = mp->ma_index;
+    ep0 = mp->ma_table;
     mask = mp->ma_mask;
     for (i = 0, j = 0; i <= mask; i++) {
-        if ((value=ep[i].me_value) != NULL) {
-            key = ep[i].me_key;
-            item = PyList_GET_ITEM(v, j);
-            Py_INCREF(key);
-            PyTuple_SET_ITEM(item, 0, key);
-            Py_INCREF(value);
-            PyTuple_SET_ITEM(item, 1, value);
-            j++;
+        if(-1 != id0[i]) {
+            if ((value=ep0[id0[i]].me_value) != NULL) {
+                key = ep[id0[i]].me_key;
+                item = PyList_GET_ITEM(v, j);
+                Py_INCREF(key);
+                PyTuple_SET_ITEM(item, 0, key);
+                Py_INCREF(value);
+                PyTuple_SET_ITEM(item, 1, value);
+                j++;
+            }
         }
     }
     assert(j == n);

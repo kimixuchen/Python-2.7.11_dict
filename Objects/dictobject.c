@@ -2340,8 +2340,11 @@ dict_sizeof(PyDictObject *mp)
     Py_ssize_t res;
 
     res = sizeof(PyDictObject);
-    if (mp->ma_table != mp->ma_smalltable)
-        res = res + (mp->ma_mask + 1) * sizeof(PyDictEntry);
+    if (mp->ma_index != mp->ma_index_smalltable)
+        res = res + (mp->ma_mask + 1) * sizeof(Py_ssize_t);
+    if (mp->ma_table != mp->ma_table_smalltable)
+        ret = res + (mp->ma_table_size) * sizeof(PyDictEntry);
+        
     return PyInt_FromSsize_t(res);
 }
 

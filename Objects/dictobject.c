@@ -778,9 +778,8 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
 }
 
 /* As new items are inserted into a dict object, new entries are appended to 
-   the entry table, i.e., the ma_table array. The entry table must be resized
-   when it is full and a new entry is yet to be appended. The new size of it 
-   is determined by the equation:
+   the entry table, i.e., the ma_table array. The entry table will be resized
+   when it is full. The new size of it is determined by the equation:
 
    allocation = use + (use>>3) + (use<9 ? 3:6)
 
@@ -908,7 +907,7 @@ PyDict_GetItem(PyObject *op, PyObject *key)
             return NULL;
     }
     else {
-        ep = (mp->ma_lookup)(mp, key, hash);
+        ep = (mp->ma_lookup)(mp, key, hash, NULL);
         if (ep == NULL) {
             PyErr_Clear();
             return NULL;
@@ -923,9 +922,11 @@ dict_set_item_by_hash_or_entry(register PyObject *op, PyObject *key,
 {
     register PyDictObject *mp;
     register Py_ssize_t n_used;
+    int dictresize_index_ret;
 
     mp = (PyDictObject *)op;
-    assert(mp->ma_fill <= mp->ma_mask);  /* at least one empty slot */
+    assert(mp->ma_fill <= mp->ma_mask);      /* at least one empty slot */
+    assert(mp->ma_fill < mp->ma_table_size);    /* at least one empty entry */
     n_used = mp->ma_used;
     Py_INCREF(value);
     Py_INCREF(key);
@@ -951,9 +952,26 @@ dict_set_item_by_hash_or_entry(register PyObject *op, PyObject *key,
      * Very large dictionaries (over 50K items) use doubling instead.
      * This may help applications with severe memory constraints.
      */
-    if (!(mp->ma_used > n_used && mp->ma_fill*3 >= (mp->ma_mask+1)*2))
+    if (!(mp->ma_used > n_used && 
+    (mp->ma_fill*3 >= (mp->ma_mask+1)*2 || mp->ma_fill == mp->ma_table_size)))
         return 0;
-    return dictresize(mp, (mp->ma_used > 50000 ? 2 : 4) * mp->ma_used);
+    
+    if(mp->ma_fill*3 >= (mp->ma_mask+1)*2)
+        dictresize_index_ret = 
+            dictresize_index(mp, (mp->ma_used > 50000 ? 2 : 4) * mp->ma_used);
+    else
+        dictresize_index_ret = 0;
+    
+    if(-1 == dictresize_index_ret)
+        return -1;
+    else if(0 == dictresize_index_ret) {
+        if(mp->ma_fill == mp->ma_table_size) {
+            return dictresize_table(mp, mp->ma_table_size);
+        }
+    }
+
+    assert(0);          /* NOT REACHED */
+    return -1;
 }
 
 /* CAUTION: PyDict_SetItem() must guarantee that it won't resize the

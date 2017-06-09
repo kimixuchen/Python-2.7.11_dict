@@ -538,7 +538,7 @@ _PyDict_MaybeUntrack(PyObject *op)
 {
     PyDictObject *mp;
     PyObject *value;
-    Py_ssize_t entry_num, i;
+    Py_ssize_t entry_fill, i;
     PyDictEntry *ep;
 
     if (!PyDict_CheckExact(op) || !_PyObject_GC_IS_TRACKED(op))
@@ -546,8 +546,8 @@ _PyDict_MaybeUntrack(PyObject *op)
 
     mp = (PyDictObject *) op;
     ep = mp->ma_table;
-    entry_num = mp->ma_fill;
-    for (i = 0; i < entry_num; i++) {
+    entry_fill = mp->ma_fill;
+    for (i = 0; i < entry_fill; i++) {
         if ((value = ep[i].me_value) == NULL)
             continue;
         if (_PyObject_GC_MAY_BE_TRACKED(value) ||
@@ -688,7 +688,7 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
     Py_ssize_t pos;
     int is_oldtable_malloced;
     Py_ssize_t small_copy[PyDict_MINSIZE];
-    Py_ssize_t entry_num;
+    Py_ssize_t entry_fill, entry_used;
     PyDictEntry *ep0, *ep;
     assert(min_index_used >= 0);
 
@@ -736,9 +736,9 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
 
     /* Make the ma_index empty, using the new table. */
     assert(newtable != oldtable);
-    /* Record the ma_fill to traverse ma_table.
-     */
-    entry_num = mp->ma_fill;
+    /* Record the ma_fill and ma_sued. */
+    entry_fill = mp->ma_fill;
+    entry_used = mp->ma_used;
     mp->ma_index = newtable;
     mp->ma_mask = newsize - 1;
     memset(newtable, -1, sizeof(Py_ssize_t) * newsize);
@@ -748,20 +748,22 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
     if (is_oldtable_malloced)
         PyMem_DEL(oldtable);
     
-    /* Arrange ma_table in place, delete dummy entries.
-     */
-    ep0 = mp->ma_table;
-    pos = 0;
+    if(entry_fill != entry_used) {
+        /* Arrange ma_table in place, delete dummy entries. */
+        ep0 = mp->ma_table;
+        pos = 0;
 
-    for(i = 0; i < entry_num; i++) {
-        if(ep0[i]->me_key != dummy) {
-            ep0[pos++] = ep0[i];
-        }
-        else {
-            assert(NULL == ep0[i]->me_value);
-            Py_DECREF(ep0[i]->me_key);
+        for(i = 0; i < entry_fill; i++) {
+            if(ep0[i]->me_key != dummy) {
+                ep0[pos++] = ep0[i];
+            }
+            else {
+                assert(NULL == ep0[i]->me_value);
+                Py_DECREF(ep0[i]->me_key);
+            }
         }
     }
+    
 
     /* Copy the data over; this is refcount-neutral for active entries;
      * now ma_table only contains active entries.

@@ -2344,7 +2344,7 @@ dict_sizeof(PyDictObject *mp)
         res = res + (mp->ma_mask + 1) * sizeof(Py_ssize_t);
     if (mp->ma_table != mp->ma_table_smalltable)
         ret = res + (mp->ma_table_size) * sizeof(PyDictEntry);
-        
+
     return PyInt_FromSsize_t(res);
 }
 
@@ -2479,7 +2479,7 @@ PyDict_Contains(PyObject *op, PyObject *key)
         if (hash == -1)
             return -1;
     }
-    ep = (mp->ma_lookup)(mp, key, hash);
+    ep = (mp->ma_lookup)(mp, key, hash, NULL);
     return ep == NULL ? -1 : (ep->me_value != NULL);
 }
 

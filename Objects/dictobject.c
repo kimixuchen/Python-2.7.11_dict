@@ -2136,7 +2136,7 @@ dict_contains(register PyDictObject *mp, PyObject *key)
         if (hash == -1)
             return NULL;
     }
-    ep = (mp->ma_lookup)(mp, key, hash);
+    ep = (mp->ma_lookup)(mp, key, hash, NULL);
     if (ep == NULL)
         return NULL;
     return PyBool_FromLong(ep->me_value != NULL);
@@ -2169,7 +2169,7 @@ dict_get(register PyDictObject *mp, PyObject *args)
         if (hash == -1)
             return NULL;
     }
-    ep = (mp->ma_lookup)(mp, key, hash);
+    ep = (mp->ma_lookup)(mp, key, hash, NULL);
     if (ep == NULL)
         return NULL;
     val = ep->me_value;

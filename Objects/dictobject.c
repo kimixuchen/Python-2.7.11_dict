@@ -1377,7 +1377,7 @@ dict_subscript(PyDictObject *mp, register PyObject *key)
         if (hash == -1)
             return NULL;
     }
-    ep = (mp->ma_lookup)(mp, key, hash);
+    ep = (mp->ma_lookup)(mp, key, hash, NULL);
     if (ep == NULL)
         return NULL;
     v = ep->me_value;

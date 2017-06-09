@@ -804,10 +804,7 @@ static int
 dictresize_table(PyDictObject *mp, Py_ssize_t min_entry_used) {
     Py_ssize_t newsize;
     PyDictEntry *oldtable, *newtable;
-    Py_ssize_t i;
-    Py_ssize_t pos;
     int is_oldtable_malloced;
-    PyDictEntry small_copy[PyDict_MINSIZE];
     assert(min_entry_used >= 0);
 
     newsize = max(PyDict_MINSIZE, cal_entrytable_newsize(min_entry_used));
@@ -838,7 +835,9 @@ dictresize_table(PyDictObject *mp, Py_ssize_t min_entry_used) {
 
     assert(newtable != oldtable);
     memcpy(newtable, oldtable, (mp->ma_table_size) * sizeof(PyDictEntry));
-
+    if(is_oldtable_malloced)
+        PyMen_DEL(oldtable);
+        
     mp->ma_table_size = newsize;
 
     return 0;

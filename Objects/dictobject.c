@@ -1427,10 +1427,11 @@ dict_keys(register PyDictObject *mp)
     register PyObject *v;
     register Py_ssize_t i, j;
     PyDictEntry *ep;
-    Py_ssize_t mask, n;
+    Py_ssize_t fill, n;
 
   again:
     n = mp->ma_used;
+    fill = mp->ma_fill;
     v = PyList_New(n);
     if (v == NULL)
         return NULL;
@@ -1442,8 +1443,7 @@ dict_keys(register PyDictObject *mp)
         goto again;
     }
     ep = mp->ma_table;
-    mask = mp->ma_mask;
-    for (i = 0, j = 0; i <= mask; i++) {
+    for (i = 0, j = 0; i < fill; i++) {
         if (ep[i].me_value != NULL) {
             PyObject *key = ep[i].me_key;
             Py_INCREF(key);

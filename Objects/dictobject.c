@@ -2071,7 +2071,7 @@ dict_equal(PyDictObject *a, PyDictObject *b)
         return 0;
 
     /* Same # of entries -- check all of 'em.  Exit early on any diff. */
-    for (i = 0; i <= a->ma_mask; i++) {
+    for (i = 0; i < a->ma_fill; i++) {
         PyObject *aval = a->ma_table[i].me_value;
         if (aval != NULL) {
             int cmp;

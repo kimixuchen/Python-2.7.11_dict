@@ -2198,7 +2198,7 @@ dict_setdefault(register PyDictObject *mp, PyObject *args)
         if (hash == -1)
             return NULL;
     }
-    ep = (mp->ma_lookup)(mp, key, hash);
+    ep = (mp->ma_lookup)(mp, key, hash, NULL);
     if (ep == NULL)
         return NULL;
     val = ep->me_value;

@@ -1244,7 +1244,7 @@ dict_print(register PyDictObject *mp, register FILE *fp, register int flags)
     fprintf(fp, "{");
     Py_END_ALLOW_THREADS
     any = 0;
-    for (i = 0; i <= mp->ma_mask; i++) {
+    for (i = 0; i <= mp->ma_fill; i++) {
         PyDictEntry *ep = mp->ma_table + i;
         PyObject *pvalue = ep->me_value;
         if (pvalue != NULL) {
@@ -1274,11 +1274,6 @@ dict_print(register PyDictObject *mp, register FILE *fp, register int flags)
     }
     Py_BEGIN_ALLOW_THREADS
     fprintf(fp, "}");
-    fprintf(fp, "memory usage:\n");
-    if(dict_total_size>0) {
-        fprintf(fp, "dict_total_size=%ldB  dict_ma_table_size=%ldB  percentage=%lf%%.\n",
-        dict_total_size, dict_ma_table_size, dict_ma_table_size*1.0/dict_total_size*100);
-    }
     Py_END_ALLOW_THREADS
     Py_ReprLeave((PyObject*)mp);
     return 0;

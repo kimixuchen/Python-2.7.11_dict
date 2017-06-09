@@ -1788,10 +1788,14 @@ PyDict_Merge(PyObject *a, PyObject *b, int override)
          * that there will be no (or few) overlapping keys.
          */
         if ((mp->ma_fill + other->ma_used)*3 >= (mp->ma_mask+1)*2) {
-           if (dictresize(mp, (mp->ma_used + other->ma_used)*2) != 0)
+            if (dictresize_index(mp, (mp->ma_used + other->ma_used)*2) != 0)
                return -1;
         }
-        for (i = 0; i <= other->ma_mask; i++) {
+        if ((mp->ma_fill + other->ma_used) >= mp->ma_table_size) {
+            if (dictresize_table(mp, mp->ma_fill + other->ma_used) != 0)
+                return -1;
+        }
+        for (i = 0; i < other->ma_fill; i++) {
             entry = &other->ma_table[i];
             if (entry->me_value != NULL &&
                 (override ||

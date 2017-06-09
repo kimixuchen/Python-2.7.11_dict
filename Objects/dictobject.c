@@ -1024,7 +1024,7 @@ PyDict_DelItem(PyObject *op, PyObject *key)
             return -1;
     }
     mp = (PyDictObject *)op;
-    ep = (mp->ma_lookup)(mp, key, hash);
+    ep = (mp->ma_lookup)(mp, key, hash, NULL);
     if (ep == NULL)
         return -1;
     if (ep->me_value == NULL) {

@@ -788,7 +788,7 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
    This alogrithm is borrowed from the resizing policy of Python list objects. 
 */
 
-static int cal_table_newsize(Py_ssize_t use) {
+static int cal_entrytable_newsize(Py_ssize_t use) {
     Py_ssize_t allocation = use;
     allocation += use>>3;
     allocation += use<9 ? 3:6;
@@ -802,7 +802,46 @@ static int cal_table_newsize(Py_ssize_t use) {
  */
 static int
 dictresize_table(PyDictObject *mp, Py_ssize_t min_entry_used) {
+    Py_ssize_t newsize;
+    PyDictEntry *oldtable, *newtable;
+    Py_ssize_t i;
+    Py_ssize_t pos;
+    int is_oldtable_malloced;
+    PyDictEntry small_copy[PyDict_MINSIZE];
+    assert(min_entry_used >= 0);
 
+    newsize = max(PyDict_MINSIZE, cal_entrytable_newsize(min_entry_used));
+
+    if(newsize <= 0) {
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    /* Get space for a new table. */
+    oldtable = mp->ma_table;
+    assert(oldtable != NULL);
+    is_oldtable_malloced = oldtable != mp->ma_table_smalltable;
+
+    if (newsize == PyDict_MINSIZE) {
+        /* Don't need to malloc a larger sapce*/
+        assert(min_entry_used < PyDict_MINSIZE);
+        return 0;
+    }
+    else {
+        assert(newsize > min_entry_used);
+        newtable = PyMem_NEW(PyDictEntry, newsize);
+        if (NULL == newtable) {
+            PyErr_NoMemory();
+            return -1;
+        }
+    }
+
+    assert(newtable != oldtable);
+    memcpy(newtable, oldtable, (mp->ma_table_size) * sizeof(PyDictEntry));
+
+    mp->ma_table_size = newsize;
+
+    return 0;
 }
 
 /* Create a new dictionary pre-sized to hold an estimated number of elements.

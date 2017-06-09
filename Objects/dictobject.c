@@ -673,24 +673,28 @@ insertdict_clean(register PyDictObject *mp, PyObject *key, long hash,
 }
 
 /*
-Restructure the table by allocating a new table and reinserting all
-items again.  When entries have been deleted, the new table may
+Restructure the index_table by allocating a new table and reinserting 
+all items again.  When slots have been deleted, the new table may
 actually be smaller than the old one.
+At the same time, entry_table will be updated, dummy entries will be
+removed.
 */
 static int
-dictresize(PyDictObject *mp, Py_ssize_t minused)
+dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
 {
     Py_ssize_t newsize;
-    PyDictEntry *oldtable, *newtable, *ep;
+    Py_ssize_t *oldtable, *newtable, *ep;
     Py_ssize_t i;
+    Py_ssize_t pos;
     int is_oldtable_malloced;
-    PyDictEntry small_copy[PyDict_MINSIZE];
-
-    assert(minused >= 0);
+    Py_ssize_t small_copy[PyDict_MINSIZE];
+    Py_ssize_t entry_num;
+    PyDictEntry *ep0, *ep;
+    assert(min_index_used >= 0);
 
     /* Find the smallest table size > minused. */
     for (newsize = PyDict_MINSIZE;
-         newsize <= minused && newsize > 0;
+         newsize <= min_index_used && newsize > 0;
          newsize <<= 1)
         ;
     if (newsize <= 0) {
@@ -699,31 +703,20 @@ dictresize(PyDictObject *mp, Py_ssize_t minused)
     }
 
     /* Get space for a new table. */
-    oldtable = mp->ma_table;
+    oldtable = mp->ma_index;
     assert(oldtable != NULL);
-    is_oldtable_malloced = oldtable != mp->ma_smalltable;
+    is_oldtable_malloced = oldtable != mp->ma_index_smalltable;
 
     if (newsize == PyDict_MINSIZE) {
         /* A large table is shrinking, or we can't get any smaller. */
-        newtable = mp->ma_smalltable;
-        if (newtable == oldtable) {
-            if (mp->ma_fill == mp->ma_used) {
-                /* No dummies, so no point doing anything. */
-                return 0;
-            }
-            /* We're not going to resize it, but rebuild the
-               table anyway to purge old dummy entries.
-               Subtle:  This is *necessary* if fill==size,
-               as lookdict needs at least one virgin slot to
-               terminate failing searches.  If fill < size, it's
-               merely desirable, as dummies slow searches. */
-            assert(mp->ma_fill > mp->ma_used);
-            memcpy(small_copy, oldtable, sizeof(small_copy));
-            oldtable = small_copy;
+        newtable = mp->ma_index_smalltable;
+        if (newtable == oldtable && mp->ma_fill == mp->ma_used) {
+            /* No dummies, so no point doing anything. */
+            return 0;
         }
     }
     else {
-        newtable = PyMem_NEW(PyDictEntry, newsize);
+        newtable = PyMem_NEW(Py_ssize_t, newsize);
         if (newtable == NULL) {
             PyErr_NoMemory();
             return -1;
@@ -741,34 +734,75 @@ dictresize(PyDictObject *mp, Py_ssize_t minused)
         dict_ma_table_size -= (mp->ma_mask+1) * sizeof(PyDictEntry);
     }
 
-    /* Make the dict empty, using the new table. */
+    /* Make the ma_index empty, using the new table. */
     assert(newtable != oldtable);
-    mp->ma_table = newtable;
+    /* Record the ma_fill to traverse ma_table.
+     */
+    entry_num = mp->ma_fill;
+    mp->ma_index = newtable;
     mp->ma_mask = newsize - 1;
-    memset(newtable, 0, sizeof(PyDictEntry) * newsize);
-    mp->ma_used = 0;
-    i = mp->ma_fill;
+    memset(newtable, -1, sizeof(Py_ssize_t) * newsize);
     mp->ma_fill = 0;
-
-    /* Copy the data over; this is refcount-neutral for active entries;
-       dummy entries aren't copied over, of course */
-    for (ep = oldtable; i > 0; ep++) {
-        if (ep->me_value != NULL) {             /* active entry */
-            --i;
-            insertdict_clean(mp, ep->me_key, (long)ep->me_hash,
-                             ep->me_value);
-        }
-        else if (ep->me_key != NULL) {          /* dummy entry */
-            --i;
-            assert(ep->me_key == dummy);
-            Py_DECREF(ep->me_key);
-        }
-        /* else key == value == NULL:  nothing to do */
-    }
+    mp->ma_used = 0;
 
     if (is_oldtable_malloced)
         PyMem_DEL(oldtable);
+    
+    /* Arrange ma_table in place, delete dummy entries.
+     */
+    ep0 = mp->ma_table;
+    pos = 0;
+
+    for(i = 0; i < entry_num; i++) {
+        if(ep0[i]->me_key != dummy) {
+            ep0[pos++] = ep0[i];
+        }
+        else {
+            assert(NULL == ep0[i]->me_value);
+            Py_DECREF(ep0[i]->me_key);
+        }
+    }
+
+    /* Copy the data over; this is refcount-neutral for active entries;
+     * now ma_table only contains active entries.
+     */
+    for (ep = mp->ma_table, i = 0; i < ma_used; i++, ep++) {
+        assert(NULL != ep->me_value && ep->me_key != dummy);
+
+        insertdict_clean(mp, ep->me_key, (long)ep->me_hash, ep->me_value);
+    }
+
     return 0;
+}
+
+/* As new items are inserted into a dict object, new entries are appended to 
+   the entry table, i.e., the ma_table array. The entry table must be resized
+   when it is full and a new entry is yet to be appended. The new size of it 
+   is determined by the equation:
+
+   allocation = use + (use>>3) + (use<9 ? 3:6)
+
+   use is the number of used and lazy-deleted entries, including the just 
+   appended one, and allocation is the new size of array to be allocated.
+   The growth pattern of ma_table is 0,4,8,16,25,35,46,58,72,88,...
+   This alogrithm is borrowed from the resizing policy of Python list objects. 
+*/
+
+static int cal_table_newsize(Py_ssize_t use) {
+    Py_ssize_t allocation = use;
+    allocation += use>>3;
+    allocation += use<9 ? 3:6;
+
+    assert(allocation > 0);
+
+    return allocation;
+}
+
+/* Restructure ma_table, it doesn't affect ma_index.
+ */
+static int
+dictresize_table(PyDictObject *mp, Py_ssize_t min_entry_used) {
+
 }
 
 /* Create a new dictionary pre-sized to hold an estimated number of elements.

@@ -1934,13 +1934,20 @@ characterize(PyDictObject *a, PyDictObject *b, PyObject **pval)
     PyObject *akey = NULL; /* smallest key in a s.t. a[akey] != b[akey] */
     PyObject *aval = NULL; /* a[akey] */
     Py_ssize_t i;
+    Py_ssize_t index;
+    PyDictEntry *epa, *epb;
     int cmp;
 
+    epa = a->ma_table;
+    epb = b->ma_table;
+    assert(epa != NULL)
+    assert(epb != NULL)
     for (i = 0; i <= a->ma_mask; i++) {
         PyObject *thiskey, *thisaval, *thisbval;
-        if (a->ma_table[i].me_value == NULL)
+        index = a->ma_index[i];
+        if (-1 == index || NULL == epa[index].me_value)
             continue;
-        thiskey = a->ma_table[i].me_key;
+        thiskey = epa[index].me_key;
         Py_INCREF(thiskey);  /* keep alive across compares */
         if (akey != NULL) {
             cmp = PyObject_RichCompareBool(akey, thiskey, Py_LT);
@@ -1950,7 +1957,7 @@ characterize(PyDictObject *a, PyDictObject *b, PyObject **pval)
             }
             if (cmp > 0 ||
                 i > a->ma_mask ||
-                a->ma_table[i].me_value == NULL)
+                epa[index].me_value == NULL)
             {
                 /* Not the *smallest* a key; or maybe it is
                  * but the compare shrunk the dict so we can't
@@ -1964,7 +1971,7 @@ characterize(PyDictObject *a, PyDictObject *b, PyObject **pval)
         }
 
         /* Compare a[thiskey] to b[thiskey]; cmp <- true iff equal. */
-        thisaval = a->ma_table[i].me_value;
+        thisaval = epa[index].me_value;
         assert(thisaval);
         Py_INCREF(thisaval);   /* keep alive */
         thisbval = PyDict_GetItem((PyObject *)b, thiskey);

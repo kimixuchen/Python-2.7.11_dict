@@ -2225,7 +2225,7 @@ dict_pop(PyDictObject *mp, PyObject *args)
         if (hash == -1)
             return NULL;
     }
-    ep = (mp->ma_lookup)(mp, key, hash);
+    ep = (mp->ma_lookup)(mp, key, hash, NULL);
     if (ep == NULL)
         return NULL;
     if (ep->me_value == NULL) {
@@ -2271,26 +2271,12 @@ dict_popitem(PyDictObject *mp)
                         "popitem(): dictionary is empty");
         return NULL;
     }
-    /* Set ep to "the first" dict entry with a value.  We abuse the hash
-     * field of slot 0 to hold a search finger:
-     * If slot 0 has a value, use slot 0.
-     * Else slot 0 is being used to hold a search finger,
-     * and we use its hash value as the first index to look.
-     */
+    /* Because ma_table is an array, we can traverse entries from begin to end. */
     ep = &mp->ma_table[0];
     if (ep->me_value == NULL) {
-        i = ep->me_hash;
-        /* The hash field may be a real hash value, or it may be a
-         * legit search finger, or it may be a once-legit search
-         * finger that's out of bounds now because it wrapped around
-         * or the table shrunk -- simply make sure it's in bounds now.
-         */
-        if (i > mp->ma_mask || i < 1)
-            i = 1;              /* skip slot 0 */
+        i = 1;
         while ((ep = &mp->ma_table[i])->me_value == NULL) {
             i++;
-            if (i > mp->ma_mask)
-                i = 1;
         }
     }
     PyTuple_SET_ITEM(res, 0, ep->me_key);
@@ -2300,7 +2286,6 @@ dict_popitem(PyDictObject *mp)
     ep->me_value = NULL;
     mp->ma_used--;
     assert(mp->ma_table[0].me_value == NULL);
-    mp->ma_table[0].me_hash = i + 1;  /* next place to start */
     return res;
 }
 

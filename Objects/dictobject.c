@@ -792,7 +792,9 @@ dictresize_table(PyDictObject *mp, Py_ssize_t min_entry_used) {
     int is_oldtable_malloced;
     assert(min_entry_used >= 0);
 
-    newsize = max(PyDict_MINSIZE, cal_entrytable_newsize(min_entry_used));
+    newsize = cal_entrytable_newsize(min_entry_used);
+    if(newsize < PyDict_MINSIZE)
+        newsize = PyDict_MINSIZE;
 
     if(newsize <= 0) {
         PyErr_NoMemory();

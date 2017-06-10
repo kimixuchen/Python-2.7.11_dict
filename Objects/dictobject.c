@@ -651,7 +651,7 @@ insertdict_clean(register PyDictObject *mp, PyObject *key, long hash,
     i = hash & mask;
     id = id0[i];
     if(-1 == id) {
-        ep = &ep0[ma_fill];
+        ep = &ep0[mp->ma_fill];
     } else {
         ep = &ep0[i];
     }
@@ -660,7 +660,7 @@ insertdict_clean(register PyDictObject *mp, PyObject *key, long hash,
         i &= mask;
         id = id0[i];
         if(-1 == id) {
-            ep = &ep0[ma_fill];
+            ep = &ep0[mp->ma_fill];
         } else {
             ep = &ep0[i];
         }

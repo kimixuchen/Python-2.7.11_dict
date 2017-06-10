@@ -2343,7 +2343,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
                     PyDictObject *d;
                     PyDictEntry *e;
                     d = (PyDictObject *)(f->f_globals);
-                    e = d->ma_lookup(d, w, hash);
+                    e = d->ma_lookup(d, w, hash, NULL);
                     if (e == NULL) {
                         x = NULL;
                         break;
@@ -2355,7 +2355,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
                         DISPATCH();
                     }
                     d = (PyDictObject *)(f->f_builtins);
-                    e = d->ma_lookup(d, w, hash);
+                    e = d->ma_lookup(d, w, hash, NULL);
                     if (e == NULL) {
                         x = NULL;
                         break;

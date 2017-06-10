@@ -2791,6 +2791,7 @@ static PyObject *dictiter_iternextvalue(dictiterobject *di)
     PyObject *value;
     register Py_ssize_t i, mask;
     register PyDictEntry *ep;
+    register Py_ssize_t *id;
     PyDictObject *d = di->di_dict;
 
     if (d == NULL)
@@ -2809,7 +2810,8 @@ static PyObject *dictiter_iternextvalue(dictiterobject *di)
     if (i < 0 || i > mask)
         goto fail;
     ep = d->ma_table;
-    while ((value=ep[i].me_value) == NULL) {
+    id = d->ma_index;
+    while (-1 == id[i] || (value=ep[id[i]].me_value) == NULL) {
         i++;
         if (i > mask)
             goto fail;

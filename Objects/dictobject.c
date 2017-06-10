@@ -884,7 +884,7 @@ PyDict_GetItem(PyObject *op, PyObject *key)
         /* preserve the existing exception */
         PyObject *err_type, *err_value, *err_tb;
         PyErr_Fetch(&err_type, &err_value, &err_tb);
-        ep = (mp->ma_lookup)(mp, key, hash);
+        ep = (mp->ma_lookup)(mp, key, hash, NULL);
         /* ignore errors */
         PyErr_Restore(err_type, err_value, err_tb);
         if (ep == NULL)
@@ -919,7 +919,7 @@ dict_set_item_by_hash_or_entry(register PyObject *op, PyObject *key,
             return -1;
     }
     else {
-        if (insertdict_by_entry(mp, key, hash, ep, value, ma_index_entry) != 0)
+        if (insertdict_by_entry(mp, key, hash, ep, value, ma_index_pos) != 0)
             return -1;
     }
     /* If we added a key, we can safely resize.  Otherwise just return!
@@ -1097,7 +1097,7 @@ PyDict_Clear(PyObject *op)
 #endif
     }
 
-    if (table_is_malloced)
+    if (entry_table_is_malloced)
         PyMem_DEL(entry_table);
 }
 

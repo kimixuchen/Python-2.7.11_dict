@@ -823,7 +823,7 @@ dictresize_table(PyDictObject *mp, Py_ssize_t min_entry_used) {
     assert(newtable != oldtable);
     memcpy(newtable, oldtable, (mp->ma_table_size) * sizeof(PyDictEntry));
     if(is_oldtable_malloced)
-        PyMen_DEL(oldtable);
+        PyMem_DEL(oldtable);
 
     mp->ma_table_size = newsize;
 

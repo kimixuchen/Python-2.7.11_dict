@@ -640,6 +640,7 @@ static void
 insertdict_clean(register PyDictObject *mp, PyObject *key, long hash,
                  PyObject *value)
 {
+    printf("insertdict_clean begin.\n");
     register size_t i;
     register Py_ssize_t id;
     register size_t perturb;
@@ -656,10 +657,16 @@ insertdict_clean(register PyDictObject *mp, PyObject *key, long hash,
     } else {
         ep = &ep0[i];
     }
-    for (perturb = hash; ep->me_key != NULL; perturb >>= PERTURB_SHIFT) {
+    printf("insertdict_clean ma_mask=%d ma_fill=%d ma_table_size=%d\n", mp->ma_mask, mp->ma_fill, mp->ma_table_size);
+    for(int i=0; i<mp->ma_table_size; ++i) {
+        printf("insertdict_clean ma_table[%d]: key=%d  value=%d", i, mp->ma_table[i].me_key, mp->ma_table[i].me_value);
+    }
+    for (perturb = hash; -1 != id; perturb >>= PERTURB_SHIFT) {
+        //printf("insertdict_clean ep->me_key=%d\n", ep->me_key);
         i = (i << 2) + i + perturb + 1;
         i &= mask;
         id = id0[i];
+        //printf("insertdict_clean i=%d  id=%d\n", i, id);
         if(-1 == id) {
             ep = &ep0[mp->ma_fill];
         } else {
@@ -673,6 +680,8 @@ insertdict_clean(register PyDictObject *mp, PyObject *key, long hash,
     ep->me_hash = (Py_ssize_t)hash;
     ep->me_value = value;
     mp->ma_used++;
+
+    printf("insertdict_clean end.\n");
 }
 
 /*
@@ -703,6 +712,7 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
         ;
     if (newsize <= 0) {
         PyErr_NoMemory();
+        printf("dictresize_index end.\n");
         return -1;
     }
 
@@ -716,6 +726,7 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
         newtable = mp->ma_index_smalltable;
         if (newtable == oldtable && mp->ma_fill == mp->ma_used) {
             /* No dummies, so no point doing anything. */
+            printf("dictresize_index end.\n");
             return 0;
         }
     }
@@ -723,6 +734,7 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
         newtable = PyMem_NEW(Py_ssize_t, newsize);
         if (newtable == NULL) {
             PyErr_NoMemory();
+            printf("dictresize_index end.\n");
             return -1;
         }
 
@@ -746,6 +758,7 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
      * move entry in ma_table in place, regardless dummy entry, after
      * this, ma_table should only contain active entries.
      */
+    printf("dictresize_index entry_fill=%d\n", entry_fill);
     for (ep = mp->ma_table, i = 0; i < entry_fill; i++, ep++) {
         if (ep->me_value != dummy) {
             assert(NULL != ep->me_value);
@@ -759,7 +772,6 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
     }
     /* Set rest memory of ma_table to NULL. */
     memset(mp->ma_table + entry_used, 0, (mp->ma_table_size - entry_used) * sizeof(PyDictEntry));
-
     printf("dictresize_index end.\n");
 
     return 0;
@@ -868,6 +880,8 @@ _PyDict_NewPresized(Py_ssize_t minused)
 PyObject *
 PyDict_GetItem(PyObject *op, PyObject *key)
 {
+    printf("PyDict_GetItem begin\n");
+
     long hash;
     PyDictObject *mp = (PyDictObject *)op;
     PyDictEntry *ep;
@@ -904,9 +918,14 @@ PyDict_GetItem(PyObject *op, PyObject *key)
         ep = (mp->ma_lookup)(mp, key, hash, NULL);
         if (ep == NULL) {
             PyErr_Clear();
+
+            printf("PyDict_GetItem end\n");
+
             return NULL;
         }
     }
+    printf("PyDict_GetItem end\n");
+
     return ep->me_value;
 }
 

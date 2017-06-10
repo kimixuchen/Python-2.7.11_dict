@@ -2865,6 +2865,7 @@ static PyObject *dictiter_iternextitem(dictiterobject *di)
     PyObject *key, *value, *result = di->di_result;
     register Py_ssize_t i, mask;
     register PyDictEntry *ep;
+    register Py_ssize_t *id;
     PyDictObject *d = di->di_dict;
 
     if (d == NULL)
@@ -2882,8 +2883,9 @@ static PyObject *dictiter_iternextitem(dictiterobject *di)
     if (i < 0)
         goto fail;
     ep = d->ma_table;
+    id = d->ma_index;
     mask = d->ma_mask;
-    while (i <= mask && ep[i].me_value == NULL)
+    while (i <= mask && (-1 == id[i] || ep[id[i]].me_value == NULL))
         i++;
     di->di_pos = i+1;
     if (i > mask)
@@ -2899,8 +2901,8 @@ static PyObject *dictiter_iternextitem(dictiterobject *di)
             return NULL;
     }
     di->len--;
-    key = ep[i].me_key;
-    value = ep[i].me_value;
+    key = ep[id[i]].me_key;
+    value = ep[id[i]].me_value;
     Py_INCREF(key);
     Py_INCREF(value);
     PyTuple_SET_ITEM(result, 0, key);

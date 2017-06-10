@@ -158,7 +158,7 @@ _PyDict_Dummy(void)
 
 /* forward declarations */
 static PyDictEntry *
-lookdict_string(PyDictObject *mp, PyObject *key, long hash);
+lookdict_string(PyDictObject *mp, PyObject *key, long hash, Py_ssize_t *pos);
 
 #ifdef SHOW_CONVERSION_COUNTS
 static long created = 0L;
@@ -219,17 +219,17 @@ show_track(void)
 */
 
 #define INIT_NONZERO_DICT_SLOTS(mp) do {                                \
-    (mp)->ma_table = (mp)->ma_index_smalltable;                         \
-    (mp)->ma_table_smalltable = (mp)->ma_table_smalltable;              \
+    (mp)->ma_index = (mp)->ma_index_smalltable;                         \
+    (mp)->ma_table = (mp)->ma_table_smalltable;                         \
     (mp)->ma_mask = PyDict_MINSIZE - 1;                                 \
-    (mp)->ma_table_size = PyDict_MINSIZE                                \
+    (mp)->ma_table_size = PyDict_MINSIZE;                               \
     } while(0)
 
-#define EMPTY_TO_MINSIZE(mp) do {                                              \
+#define EMPTY_TO_MINSIZE(mp) do {                                               \
     memset((mp)->ma_index_smalltable, -1, sizeof((mp)->ma_index_smalltable));   \
-    memset((mp)->ma_table_smalltable, 0, sizeof((mp)->ma_table_smalltable));  \
-    (mp)->ma_used = (mp)->ma_fill = 0;                                         \
-    INIT_NONZERO_DICT_SLOTS(mp);                                               \
+    memset((mp)->ma_table_smalltable, 0, sizeof((mp)->ma_table_smalltable));    \
+    (mp)->ma_used = (mp)->ma_fill = 0;                                          \
+    INIT_NONZERO_DICT_SLOTS(mp);                                                \
     } while(0)
 
 /* Dictionary reuse scheme to save calls to malloc, free, and memset */
@@ -342,6 +342,7 @@ lookdict(PyDictObject *mp, PyObject *key, register long hash, Py_ssize_t *pos)
     register size_t perturb;
     register PyDictEntry *freeslot;
     register size_t mask = (size_t)mp->ma_mask;
+    register Py_ssize_t ma_fill = mp->ma_fill;
     Py_ssize_t *id0 = mp->ma_index;
     PyDictEntry *ep0 = mp->ma_table;
     register PyDictEntry *ep;
@@ -453,6 +454,7 @@ lookdict_string(PyDictObject *mp, PyObject *key, register long hash, Py_ssize_t 
     register size_t perturb;
     register PyDictEntry *freeslot;
     register size_t mask = (size_t)mp->ma_mask;
+    register Py_ssize_t ma_fill = mp->ma_fill;
     Py_ssize_t *id0 = mp->ma_index;
     PyDictEntry *ep0 = mp->ma_table;
     register PyDictEntry *ep;
@@ -467,7 +469,7 @@ lookdict_string(PyDictObject *mp, PyObject *key, register long hash, Py_ssize_t 
         ++converted;
 #endif
         mp->ma_lookup = lookdict;
-        return lookdict(mp, key, hash);
+        return lookdict(mp, key, hash, NULL);
     }
     i = hash & mask;
     if(NULL != pos)
@@ -647,7 +649,7 @@ insertdict_clean(register PyDictObject *mp, PyObject *key, long hash,
 
     MAINTAIN_TRACKING(mp, key, value);
     i = hash & mask;
-    id = id0[i]
+    id = id0[i];
     if(-1 == id) {
         ep = &ep0[ma_fill];
     } else {
@@ -683,7 +685,7 @@ static int
 dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
 {
     Py_ssize_t newsize;
-    Py_ssize_t *oldtable, *newtable, *ep;
+    Py_ssize_t *oldtable, *newtable;
     Py_ssize_t i;
     Py_ssize_t pos;
     int is_oldtable_malloced;
@@ -754,7 +756,7 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
         }
     }
     /* Set rest memory of ma_table to NULL. */
-    memset(ma_table + entry_used, 0, (mp->ma_table_size - entry_used) * sizeof(PyDictEntry));
+    memset(mp->ma_table + entry_used, 0, (mp->ma_table_size - entry_used) * sizeof(PyDictEntry));
 
     return 0;
 }
@@ -900,7 +902,7 @@ PyDict_GetItem(PyObject *op, PyObject *key)
 
 static int
 dict_set_item_by_hash_or_entry(register PyObject *op, PyObject *key,
-                               long hash, PyDictEntry *ep, PyObject *value)
+                               long hash, PyDictEntry *ep, PyObject *value, Py_ssize_t ma_index_pos)
 {
     register PyDictObject *mp;
     register Py_ssize_t n_used;
@@ -917,7 +919,7 @@ dict_set_item_by_hash_or_entry(register PyObject *op, PyObject *key,
             return -1;
     }
     else {
-        if (insertdict_by_entry(mp, key, hash, ep, value) != 0)
+        if (insertdict_by_entry(mp, key, hash, ep, value, ma_index_entry) != 0)
             return -1;
     }
     /* If we added a key, we can safely resize.  Otherwise just return!
@@ -983,7 +985,7 @@ PyDict_SetItem(register PyObject *op, PyObject *key, PyObject *value)
         if (hash == -1)
             return -1;
     }
-    return dict_set_item_by_hash_or_entry(op, key, hash, NULL, value);
+    return dict_set_item_by_hash_or_entry(op, key, hash, NULL, value, -1);
 }
 
 int
@@ -1028,8 +1030,9 @@ void
 PyDict_Clear(PyObject *op)
 {
     PyDictObject *mp;
-    PyDictEntry *ep, *table;
-    int table_is_malloced;
+    PyDictEntry *ep, *entry_table;
+    int index_table_is_malloced;
+    int entry_table_is_malloced;
     Py_ssize_t fill;
     PyDictEntry small_copy[PyDict_MINSIZE];
 #ifdef Py_DEBUG
@@ -1044,9 +1047,10 @@ PyDict_Clear(PyObject *op)
     i = 0;
 #endif
 
-    table = mp->ma_table;
+    entry_table = mp->ma_table;
     assert(table != NULL);
-    table_is_malloced = table != mp->ma_smalltable;
+    entry_table_is_malloced = entry_table != mp->ma_table_smalltable;
+    index_table_is_malloced = mp->ma_index != mp->ma_index_smalltable;
 
     /* This is delicate.  During the process of clearing the dict,
      * decrefs can cause the dict to mutate.  To avoid fatal confusion
@@ -1055,7 +1059,10 @@ PyDict_Clear(PyObject *op)
      * clearing.
      */
     fill = mp->ma_fill;
-    if (table_is_malloced)
+    if (index_table_is_malloced)
+        PyMem_DEL(mp->ma_index);
+
+    if (entry_table_is_malloced)
         EMPTY_TO_MINSIZE(mp);
 
     else if (fill > 0) {
@@ -1063,23 +1070,18 @@ PyDict_Clear(PyObject *op)
          * Afraid the only safe way is to copy the dict entries into
          * another small table first.
          */
-        memcpy(small_copy, table, sizeof(small_copy));
-        table = small_copy;
+        memcpy(small_copy, entry_table, sizeof(small_copy));
+        entry_table = small_copy;
         EMPTY_TO_MINSIZE(mp);
     }
     /* else it's a small table that's already empty */
-
-    if(table_is_malloced) {
-        dict_total_size -= (mp->ma_mask + 1) * sizeof(PyDictEntry);
-        dict_ma_table_size -= (mp->ma_mask + 1) * sizeof(PyDictEntry);
-    }
 
 
     /* Now we can finally clear things.  If C had refcounts, we could
      * assert that the refcount on table is 1 now, i.e. that this function
      * has unique access to it, so decref side-effects can't alter it.
      */
-    for (ep = table; fill > 0; ++ep) {
+    for (ep = entry_table; fill > 0; ++ep) {
 #ifdef Py_DEBUG
         assert(i < n);
         ++i;
@@ -1096,7 +1098,7 @@ PyDict_Clear(PyObject *op)
     }
 
     if (table_is_malloced)
-        PyMem_DEL(table);
+        PyMem_DEL(entry_table);
 }
 
 /*
@@ -1178,7 +1180,6 @@ static void
 dict_dealloc(register PyDictObject *mp)
 {
     register PyDictEntry *ep;
-    register Py_ssize_t *id;
 
     Py_ssize_t fill = mp->ma_fill;
     PyObject_GC_UnTrack(mp);
@@ -1513,7 +1514,7 @@ dict_items(register PyDictObject *mp)
     for (i = 0, j = 0; i <= mask; i++) {
         if(-1 != id0[i]) {
             if ((value=ep0[id0[i]].me_value) != NULL) {
-                key = ep[id0[i]].me_key;
+                key = ep0[id0[i]].me_key;
                 item = PyList_GET_ITEM(v, j);
                 Py_INCREF(key);
                 PyTuple_SET_ITEM(item, 0, key);
@@ -1552,7 +1553,7 @@ dict_fromkeys(PyObject *cls, PyObject *args)
             PyObject *key;
             long hash;
 
-            if (dictresize(mp, Py_SIZE(seq) / 2 * 3)) {
+            if (dictresize_index(mp, Py_SIZE(seq) / 2 * 3)) {
                 Py_DECREF(d);
                 return NULL;
             }
@@ -1573,7 +1574,7 @@ dict_fromkeys(PyObject *cls, PyObject *args)
             PyObject *key;
             long hash;
 
-            if (dictresize(mp, PySet_GET_SIZE(seq) / 2 * 3)) {
+            if (dictresize_index(mp, PySet_GET_SIZE(seq) / 2 * 3)) {
                 Py_DECREF(d);
                 return NULL;
             }
@@ -1922,8 +1923,8 @@ characterize(PyDictObject *a, PyDictObject *b, PyObject **pval)
 
     epa = a->ma_table;
     epb = b->ma_table;
-    assert(epa != NULL)
-    assert(epb != NULL)
+    assert(epa != NULL);
+    assert(epb != NULL);
     for (i = 0; i <= a->ma_mask; i++) {
         PyObject *thiskey, *thisaval, *thisbval;
         index = a->ma_index[i];
@@ -2170,6 +2171,7 @@ dict_setdefault(register PyDictObject *mp, PyObject *args)
     PyObject *val = NULL;
     long hash;
     PyDictEntry *ep;
+    Py_ssize_t ma_index_pos;
 
     if (!PyArg_UnpackTuple(args, "setdefault", 1, 2, &key, &failobj))
         return NULL;
@@ -2180,13 +2182,13 @@ dict_setdefault(register PyDictObject *mp, PyObject *args)
         if (hash == -1)
             return NULL;
     }
-    ep = (mp->ma_lookup)(mp, key, hash, NULL);
+    ep = (mp->ma_lookup)(mp, key, hash, &ma_index_pos);
     if (ep == NULL)
         return NULL;
     val = ep->me_value;
     if (val == NULL) {
         if (dict_set_item_by_hash_or_entry((PyObject*)mp, key, hash, ep,
-                                           failobj) == 0)
+                                           failobj, ma_index_pos) == 0)
             val = failobj;
     }
     Py_XINCREF(val);
@@ -2343,7 +2345,7 @@ dict_sizeof(PyDictObject *mp)
     if (mp->ma_index != mp->ma_index_smalltable)
         res = res + (mp->ma_mask + 1) * sizeof(Py_ssize_t);
     if (mp->ma_table != mp->ma_table_smalltable)
-        ret = res + (mp->ma_table_size) * sizeof(PyDictEntry);
+        res = res + (mp->ma_table_size) * sizeof(PyDictEntry);
 
     return PyInt_FromSsize_t(res);
 }

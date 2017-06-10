@@ -3974,6 +3974,8 @@ static int add_operators(PyTypeObject *);
 int
 PyType_Ready(PyTypeObject *type)
 {
+    printf("PyType_Ready begin.\n");
+
     PyObject *dict, *bases;
     PyTypeObject *base;
     Py_ssize_t i, n;
@@ -4155,6 +4157,7 @@ PyType_Ready(PyTypeObject *type)
     return 0;
 
   error:
+    printf("PyType_Ready error.\n");
     type->tp_flags &= ~Py_TPFLAGS_READYING;
     return -1;
 }

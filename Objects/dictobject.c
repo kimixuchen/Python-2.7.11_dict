@@ -254,6 +254,7 @@ PyDict_Fini(void)
 PyObject *
 PyDict_New(void)
 {
+    printf("PyDict_New.\n");
     register PyDictObject *mp;
     if (dummy == NULL) { /* Auto-initialize dummy */
         dummy = PyString_FromString("<dummy key>");
@@ -684,6 +685,7 @@ removed.
 static int
 dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
 {
+    printf("dictresize_index begin.\n");
     Py_ssize_t newsize;
     Py_ssize_t *oldtable, *newtable;
     Py_ssize_t i;
@@ -758,6 +760,8 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
     /* Set rest memory of ma_table to NULL. */
     memset(mp->ma_table + entry_used, 0, (mp->ma_table_size - entry_used) * sizeof(PyDictEntry));
 
+    printf("dictresize_index end.\n");
+
     return 0;
 }
 
@@ -787,6 +791,8 @@ static int cal_entrytable_newsize(Py_ssize_t use) {
  */
 static int
 dictresize_table(PyDictObject *mp, Py_ssize_t min_entry_used) {
+    
+    printf("dictresize_table begin.\n");
     Py_ssize_t newsize;
     PyDictEntry *oldtable, *newtable;
     int is_oldtable_malloced;
@@ -826,6 +832,8 @@ dictresize_table(PyDictObject *mp, Py_ssize_t min_entry_used) {
         PyMem_DEL(oldtable);
 
     mp->ma_table_size = newsize;
+
+    printf("dictresize_table end.\n");
 
     return 0;
 }
@@ -906,6 +914,7 @@ static int
 dict_set_item_by_hash_or_entry(register PyObject *op, PyObject *key,
                                long hash, PyDictEntry *ep, PyObject *value, Py_ssize_t ma_index_pos)
 {
+    printf("dict_set_item_by_hash_or_entry.\n");
     register PyDictObject *mp;
     register Py_ssize_t n_used;
     int dictresize_index_ret;

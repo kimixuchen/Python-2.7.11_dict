@@ -4010,6 +4010,7 @@ PyType_Ready(PyTypeObject *type)
 
     /* Initialize the base class */
     if (base && base->tp_dict == NULL) {
+        printf("PyType_Ready base---------------------------------------------------------------\n");
         if (PyType_Ready(base) < 0)
             goto error;
     }

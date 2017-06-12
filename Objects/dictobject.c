@@ -983,6 +983,10 @@ dict_set_item_by_hash_or_entry(register PyObject *op, PyObject *key,
         if(mp->ma_fill == mp->ma_table_size) {
             return dictresize_table(mp, mp->ma_table_size);
         }
+        else {
+            /* ma_fill is changed in dictresize_index()*/
+            return 0;
+        }
     }
 
     assert(0);          /* NOT REACHED */

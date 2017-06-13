@@ -837,6 +837,7 @@ dictresize_table(PyDictObject *mp, Py_ssize_t min_entry_used) {
             PyErr_NoMemory();
             return -1;
         }
+        memset(newtable, 0, newsize * sizeof(PyDictEntry));
     }
 
     assert(newtable != oldtable);
@@ -845,7 +846,8 @@ dictresize_table(PyDictObject *mp, Py_ssize_t min_entry_used) {
         PyMem_DEL(oldtable);
 
     mp->ma_table_size = newsize;
-
+    mp->ma_table = newtable;
+    
     printf("dictresize_table end.\n");
 
     return 0;

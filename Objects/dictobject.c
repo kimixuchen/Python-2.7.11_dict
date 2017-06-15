@@ -1022,7 +1022,8 @@ PyDict_SetItem(register PyObject *op, PyObject *key, PyObject *value)
         if (hash == -1)
             return -1;
     }
-    return dict_set_item_by_hash_or_entry(op, key, hash, NULL, value, -1);
+    Py_ssize_t ma_index_pos;
+    return dict_set_item_by_hash_or_entry(op, key, hash, NULL, value, ma_index_pos);
 }
 
 int

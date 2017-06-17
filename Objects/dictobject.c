@@ -9,18 +9,6 @@
 
 #include "Python.h"
 
-
-/* Total size of all dict objects, including PyDictObject and
- * PyDictEntry, unit is Byte.
- *
- */
-static long dict_total_size = 0L;
-
-/* Size of all ma_table, only malloc memory, unit is Byte.
- */
-static long dict_ma_table_size = 0L;
-
-
 /* Set a key error with the specified argument, wrapping it in a
  * tuple automatically so that tuple keys are not unpacked as the
  * exception arguments. */
@@ -296,8 +284,6 @@ PyDict_New(void)
             return NULL;
         EMPTY_TO_MINSIZE(mp);
 
-        dict_total_size += sizeof(PyDictObject);
-
 #ifdef SHOW_ALLOC_COUNT
         count_alloc++;
 #endif
@@ -336,6 +322,9 @@ NULL; this is the slot in the dict at which the key would have been found, and
 the caller can (if it wishes) add the <key, value> pair to the returned
 PyDictEntry*.
 */
+
+// mp: add new property: ma_index, ma_table is changed to a array of int
+
 static PyDictEntry *
 lookdict(PyDictObject *mp, PyObject *key, register long hash, Py_ssize_t *pos)
 {
@@ -738,7 +727,6 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
             PyErr_NoMemory();
             return -1;
         }
-
     }
 
     /* Make the ma_index empty, using the new table. */
@@ -761,7 +749,7 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
      */
     //printf("dictresize_index entry_fill=%d\n", entry_fill);
     for (ep = mp->ma_table, i = 0; i < entry_fill; i++, ep++) {
-        if (ep->me_value != dummy) {
+        if (ep->me_key != dummy) {
             assert(NULL != ep->me_value);
             /* Arrange ma_table in place, delete dummy entries. */
             insertdict_clean(mp, ep->me_key, (long)ep->me_hash, ep->me_value);

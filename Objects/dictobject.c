@@ -1589,6 +1589,11 @@ dict_fromkeys(PyObject *cls, PyObject *args)
                 return NULL;
             }
 
+            if (dictresize_table(mp, Py_SIZE(seq))) {
+                Py_DECREF(d);
+                return NULL;
+            }
+
             while (_PyDict_Next(seq, &pos, &key, &oldvalue, &hash)) {
                 Py_INCREF(key);
                 Py_INCREF(value);
@@ -1606,6 +1611,11 @@ dict_fromkeys(PyObject *cls, PyObject *args)
             long hash;
 
             if (dictresize_index(mp, PySet_GET_SIZE(seq) / 2 * 3)) {
+                Py_DECREF(d);
+                return NULL;
+            }
+
+            if(dictresize_table(mp, PySet_GET_SIZE(seq))) {
                 Py_DECREF(d);
                 return NULL;
             }

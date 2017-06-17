@@ -799,13 +799,14 @@ dictresize_table(PyDictObject *mp, Py_ssize_t min_entry_used) {
     assert(min_entry_used >= 0);
 
     newsize = cal_entrytable_newsize(min_entry_used);
-    if(newsize < PyDict_MINSIZE)
-        newsize = PyDict_MINSIZE;
 
     if(newsize <= 0) {
         PyErr_NoMemory();
         return -1;
     }
+
+    if(newsize < PyDict_MINSIZE)
+        newsize = PyDict_MINSIZE;
 
     /* Get space for a new table. */
     oldtable = mp->ma_table;

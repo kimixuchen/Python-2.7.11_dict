@@ -779,9 +779,8 @@ dictresize_index(PyDictObject *mp, Py_ssize_t min_index_used)
 */
 
 static int cal_entrytable_newsize(Py_ssize_t use) {
-    Py_ssize_t allocation = use;
-    allocation += use>>3;
-    allocation += use<9 ? 3:6;
+    Py_ssize_t allocation = 0;
+    allocation = use + (use>>3) + (use<9 ? 3:6)
 
     assert(allocation > 0);
 
